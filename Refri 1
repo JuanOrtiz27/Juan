@@ -1,0 +1,101 @@
+/*DHT11 Temperature and Humidity Sensor
+ * with Relay for Cooling Function and i2C LCD Display
+ * by Webslinger2011
+ * Relay Ground Activated
+ * Install Libraries from
+ * Brainy Bits: https://www.brainy-bits.com/dht11-tutorial/
+ * 
+ */
+//Setup LCD
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x3F,16, 2);//Set LCD i2C address and lcd size Address:0x47
+
+//Setup Humidity and Temperature Sensor
+#include "dht.h"
+#define dht_apin A3 // Pin sensor is connected to
+dht DHT;
+
+//Setup Buttons and Relay
+int Setvariable = 20;
+int Upbutton = 6;
+int Downbutton = 7;
+int relayPin = 3;
+
+const unsigned long Interval = 1000;
+unsigned long previousTime = 0;
+
+const unsigned long Interval2 = 3000;
+unsigned long previousTime2 = 0;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(relayPin,OUTPUT);
+  digitalWrite(relayPin,HIGH);
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0,0);  //Set LCD cursor to upper left corner: column 0, row 0
+  lcd.print("Webslinger2011");  //Print my message
+  delay(1000);
+  
+  Serial.println("DHT11 Humidity & temperature Sensor\n\n");
+  delay(1000);//Wait before accessing Sensor
+  //lcd.clear();
+  pinMode(Upbutton,INPUT_PULLUP);
+  pinMode(Downbutton,INPUT_PULLUP);
+  
+
+}
+
+void loop() {
+  unsigned long currentTime = millis();//Picks up the time to use for the button debouncing
+  unsigned long currentTime2 = millis();//To use for tracking the time interval in between temp and humidity readings
+   DHT.read11(dht_apin);
+  if (currentTime2 - previousTime2 >= Interval2) { //Reads everytime the set Interval is reached
+    Serial.print("Current humidity= ");
+    Serial.print(DHT.humidity,1);
+    Serial.print("%  ");
+    Serial.print("temperature= ");
+    Serial.print(DHT.temperature,1); 
+    Serial.print((char)223); 
+    Serial.println("C");
+    
+    lcd.setCursor(0,0);
+    lcd.print("Hum: ");
+    lcd.print(DHT.humidity,0);
+    lcd.print("%");
+    lcd.setCursor(0,1);
+    lcd.print("Temp:");
+    lcd.print(DHT.temperature,0);
+    lcd.print((char)223);
+    lcd.print("C");
+    previousTime2 = currentTime2;
+    }  
+ 
+  if (DHT.temperature>Setvariable){ //Turns on relay if temp is over the Setvariable(Set temperature)
+    Serial.print("   ON ");
+    lcd.setCursor(9,0);
+    lcd.print(" SW: ");
+    lcd.print("ON");
+    digitalWrite(relayPin,LOW); //switch value depending on the relay used
+  }
+  if (DHT.temperature<Setvariable){ //Turns off relay if temp is below Set temperature
+    Serial.print("   OFF");
+    lcd.setCursor(9,0);
+    lcd.print("SW: ");
+    lcd.print("OFF");
+    digitalWrite(relayPin,HIGH); //Switch value depending on the relay used
+  }
+    Serial.print(Setvariable);
+    digitalRead(Upbutton);
+    digitalRead(Downbutton);
+    lcd.setCursor(10,1);
+    lcd.print("Set:");
+    lcd.print(Setvariable);
+    
+  if (currentTime - previousTime >= Interval) { //Reads everytime the set Interval is reached
+    if (digitalRead(Upbutton) == 0) Setvariable = Setvariable+1; //Setvariable++ (increments the variable)
+    if (digitalRead(Downbutton) == 0) Setvariable = Setvariable-1; // Setvariable-- (decrements the variable) 
+      previousTime = currentTime;
+      }  
+}
